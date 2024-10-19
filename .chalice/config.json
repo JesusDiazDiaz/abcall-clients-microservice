@@ -1,0 +1,12 @@
+{
+  "version": "2.0",
+  "app_name": "abcall-clients-microservice",
+  "environment_variables": {
+    "DATABASE_URL": "postgresql://bunny:password123@abcall-clients-service-database.cxsvh4nwbuit.us-east-1.rds.amazonaws.com:5432/postgres",
+    "ENVIRONMENT": "production"
+  },
+  "stages": {
+    "prod": {
+    }
+  }
+}
