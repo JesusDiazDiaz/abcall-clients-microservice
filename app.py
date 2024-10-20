@@ -1,14 +1,18 @@
-import boto3, logging, re
-from chalice import Chalice, BadRequestError, CognitoUserPoolAuthorizer, UnauthorizedError
+import boto3
+import logging
+import re
+from chalice import Chalice, BadRequestError, CognitoUserPoolAuthorizer, UnauthorizedError, NotFoundError, \
+    ChaliceViewError
+
+from chalicelib.src.config.db import init_db
 from chalicelib.src.modules.application.commands.create_client import CreateClientCommand
-from chalicelib.src.modules.application.commands.update_client import UpdateClientCommand
 from chalicelib.src.modules.application.commands.delete_client import DeleteClientCommand
-from chalicelib.src.modules.infrastructure.dto import Base
-from chalicelib.src.seedwork.application.commands import execute_command
-from chalicelib.src.config.db import init_db, engine
-from chalicelib.src.seedwork.application.queries import execute_query
-from chalicelib.src.modules.application.queries.get_clients import GetClientsQuery
+from chalicelib.src.modules.application.commands.update_client import UpdateClientCommand
 from chalicelib.src.modules.application.queries.get_client import GetClientQuery
+from chalicelib.src.modules.application.queries.get_clients import GetClientsQuery
+from chalicelib.src.modules.application.queries.get_my_client import GetMyClientQuery
+from chalicelib.src.seedwork.application.commands import execute_command
+from chalicelib.src.seedwork.application.queries import execute_query
 
 app = Chalice(app_name='abcall-clients-microservice')
 app.debug = True
@@ -31,18 +35,21 @@ def check_superadmin_role(user_info):
         user_role = user_info['custom:custom:userRole']
         if str(user_role).lower() != 'superadmin':
             raise UnauthorizedError("Access denied, only 'superadmin' role is allowed")
-
     except Exception as e:
         raise UnauthorizedError(f"Error checking user role: {str(e)}")
 
 
 @app.route('/clients', methods=['GET'], authorizer=authorizer)
 def index():
-    auth_info = app.current_request.context['authorizer']['claims']
-    check_superadmin_role(auth_info)
+    try:
+        auth_info = app.current_request.context['authorizer']['claims']
+        check_superadmin_role(auth_info)
 
-    query_result = execute_query(GetClientsQuery())
-    return query_result.result
+        query_result = execute_query(GetClientsQuery())
+        return query_result.result
+    except Exception as e:
+        LOGGER.error(f"Error fetching clients: {str(e)}")
+        raise ChaliceViewError('An error occurred while fetching the client')
 
 
 @app.route('/client/{client_id}', methods=['GET'], authorizer=authorizer)
@@ -51,18 +58,18 @@ def client_get(client_id):
     check_superadmin_role(auth_info)
 
     if not client_id:
-        return {'status': 'fail', 'message': 'Invalid client id'}, 400
+        raise BadRequestError('Invalid client id')
 
     try:
         query_result = execute_query(GetClientQuery(client_id=client_id))
         if not query_result.result:
-            return {'status': 'fail', 'message': 'Client not found'}
+            raise NotFoundError('Client not found')
 
         return {'status': 'success', 'data': query_result.result}, 200
 
     except Exception as e:
         LOGGER.error(f"Error fetching client: {str(e)}")
-        return {'status': 'fail', 'message': 'An error occurred while fetching the client'}, 500
+        raise ChaliceViewError('An error occurred while fetching the client')
 
 
 @app.route('/client/{client_id}', methods=['DELETE'], authorizer=authorizer)
@@ -71,7 +78,7 @@ def client_delete(client_id):
     check_superadmin_role(auth_info)
 
     if not client_id:
-        return {'status': 'fail', 'message': 'Invalid client id'}, 400
+        raise BadRequestError('Invalid client id')
 
     command = DeleteClientCommand(client_id=client_id)
 
@@ -81,7 +88,7 @@ def client_delete(client_id):
 
     except Exception as e:
         LOGGER.error(f"Error fetching client: {str(e)}")
-        return {'status': 'fail', 'message': 'An error occurred while deleting the client'}, 400
+        raise ChaliceViewError('An error occurred while deleting the client')
 
 
 @app.route('/client/{client_id}', methods=['PUT'], authorizer=authorizer)
@@ -96,11 +103,11 @@ def client_update(client_id):
 
     try:
         execute_command(command)
-        return {'status': 'success'}, 200
+        return {'status': 'success'}
 
     except Exception as e:
         LOGGER.error(f"Error fetching client: {str(e)}")
-        return {'status': 'fail', 'message': 'An error occurred while fetching the client'}, 400
+        raise ChaliceViewError('An error occurred while fetching the client')
 
 
 @app.route('/client', methods=['POST'], authorizer=authorizer)
@@ -150,7 +157,23 @@ def client_post():
 
     result = execute_command(command)
 
-    return {'status': "ok", 'message': "Client created successfully", "data": result}, 200
+    return {'status': "ok", 'message': "Client created successfully", "data": result}
+
+
+@app.route('/client/my', methods=['GET'], authorizer=authorizer)
+def my_client():
+    auth_info = app.current_request.context['authorizer']['claims']
+
+    try:
+        query_result = execute_query(GetMyClientQuery(user_sub=auth_info['sub']))
+        if not query_result.result:
+            raise NotFoundError("Client not found")
+
+        return {'status': 'success', 'data': query_result.result}
+
+    except Exception as e:
+        LOGGER.error(f"Error fetching client: {str(e)}")
+        raise ChaliceViewError('An error occurred while fetching the client')
 
 
 @app.route('/migrate', methods=['POST'])
