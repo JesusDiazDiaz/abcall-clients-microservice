@@ -26,29 +26,20 @@ USER_POOL_ID = 'us-east-1_YDIpg1HiU'
 CLIENT_ID = '65sbvtotc1hssqecgusj1p3f9g'
 
 
-def check_superadmin_role(user_sub):
+def check_superadmin_role(user_info):
     try:
-        user_info = cognito_client.admin_get_user(
-            UserPoolId=USER_POOL_ID,
-            Username=user_sub
-        )
-
-        user_role = next(attr['Value'] for attr in user_info['UserAttributes'] if attr['Name'] == 'custom:user_role')
-
-        if user_role != 'superadmin':
+        user_role = user_info['custom:user_role']
+        if user_role.lower() != 'superadmin':
             raise UnauthorizedError("Access denied, only 'superadmin' role is allowed")
 
-    except cognito_client.exceptions.UserNotFoundException:
-        raise UnauthorizedError("User not found")
     except Exception as e:
         raise UnauthorizedError(f"Error checking user role: {str(e)}")
 
 
 @app.route('/clients', methods=['GET'], authorizer=authorizer)
 def index():
-    auth_info = app.current_request.context['authorizer']
-    user_sub = auth_info['sub']
-    check_superadmin_role(user_sub)
+    auth_info = app.current_request.context['authorizer']['claims']
+    check_superadmin_role(auth_info)
 
     query_result = execute_query(GetClientsQuery())
     return query_result.result
@@ -56,9 +47,8 @@ def index():
 
 @app.route('/client/{client_id}', methods=['GET'], authorizer=authorizer)
 def client_get(client_id):
-    auth_info = app.current_request.context['authorizer']
-    user_sub = auth_info['sub']
-    check_superadmin_role(user_sub)
+    auth_info = app.current_request.context['authorizer']['claims']
+    check_superadmin_role(auth_info)
 
     if not client_id:
         return {'status': 'fail', 'message': 'Invalid client id'}, 400
@@ -77,9 +67,8 @@ def client_get(client_id):
 
 @app.route('/client/{client_id}', methods=['DELETE'], authorizer=authorizer)
 def client_delete(client_id):
-    auth_info = app.current_request.context['authorizer']
-    user_sub = auth_info['sub']
-    check_superadmin_role(user_sub)
+    auth_info = app.current_request.context['authorizer']['claims']
+    check_superadmin_role(auth_info)
 
     if not client_id:
         return {'status': 'fail', 'message': 'Invalid client id'}, 400
@@ -97,9 +86,8 @@ def client_delete(client_id):
 
 @app.route('/client/{client_id}', methods=['PUT'], authorizer=authorizer)
 def client_update(client_id):
-    auth_info = app.current_request.context['authorizer']
-    user_sub = auth_info['sub']
-    check_superadmin_role(user_sub)
+    auth_info = app.current_request.context['authorizer']['claims']
+    check_superadmin_role(auth_info)
 
     if not client_id:
         return {'status': 'fail', 'message': 'Invalid client id'}, 400
@@ -117,9 +105,8 @@ def client_update(client_id):
 
 @app.route('/client', methods=['POST'], authorizer=authorizer)
 def client_post():
-    auth_info = app.current_request.context['authorizer']
-    user_sub = auth_info['sub']
-    check_superadmin_role(user_sub)
+    auth_info = app.current_request.context['authorizer']['claims']
+    check_superadmin_role(auth_info)
 
     client_as_json = app.current_request.json_body
     LOGGER.info("Receive create client request")
