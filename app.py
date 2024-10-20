@@ -28,8 +28,8 @@ CLIENT_ID = '65sbvtotc1hssqecgusj1p3f9g'
 
 def check_superadmin_role(user_info):
     try:
-        user_role = user_info['custom:user_role']
-        if user_role.lower() != 'superadmin':
+        user_role = user_info['custom:custom:userRole']
+        if str(user_role).lower() != 'superadmin':
             raise UnauthorizedError("Access denied, only 'superadmin' role is allowed")
 
     except Exception as e:
