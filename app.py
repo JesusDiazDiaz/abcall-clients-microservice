@@ -1,6 +1,7 @@
-import boto3
 import logging
 import re
+
+import boto3
 from chalice import Chalice, BadRequestError, CognitoUserPoolAuthorizer, UnauthorizedError, NotFoundError, \
     ChaliceViewError
 
@@ -65,7 +66,7 @@ def client_get(client_id):
         if not query_result.result:
             raise NotFoundError('Client not found')
 
-        return {'status': 'success', 'data': query_result.result}, 200
+        return {'status': 'success', 'data': query_result.result}
 
     except Exception as e:
         LOGGER.error(f"Error fetching client: {str(e)}")
@@ -84,7 +85,7 @@ def client_delete(client_id):
 
     try:
         execute_command(command)
-        return {'status': 'success'}, 200
+        return {'status': 'success'}
 
     except Exception as e:
         LOGGER.error(f"Error fetching client: {str(e)}")
