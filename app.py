@@ -40,7 +40,7 @@ def check_superadmin_role(user_info):
         raise UnauthorizedError(f"Error checking user role: {str(e)}")
 
 
-@app.route('/clients', methods=['GET'], authorizer=authorizer)
+@app.route('/clients', cors=True, methods=['GET'], authorizer=authorizer)
 def index():
     try:
         auth_info = app.current_request.context['authorizer']['claims']
@@ -53,7 +53,7 @@ def index():
         raise ChaliceViewError('An error occurred while fetching the client')
 
 
-@app.route('/client/{client_id}', methods=['GET'], authorizer=authorizer)
+@app.route('/client/{client_id}', cors=True, methods=['GET'], authorizer=authorizer)
 def client_get(client_id):
     auth_info = app.current_request.context['authorizer']['claims']
     check_superadmin_role(auth_info)
@@ -73,7 +73,7 @@ def client_get(client_id):
         raise ChaliceViewError('An error occurred while fetching the client')
 
 
-@app.route('/client/{client_id}', methods=['DELETE'], authorizer=authorizer)
+@app.route('/client/{client_id}', cors=True, methods=['DELETE'], authorizer=authorizer)
 def client_delete(client_id):
     auth_info = app.current_request.context['authorizer']['claims']
     check_superadmin_role(auth_info)
@@ -92,7 +92,7 @@ def client_delete(client_id):
         raise ChaliceViewError('An error occurred while deleting the client')
 
 
-@app.route('/client/{client_id}', methods=['PUT'], authorizer=authorizer)
+@app.route('/client/{client_id}', cors=True, methods=['PUT'], authorizer=authorizer)
 def client_update(client_id):
     auth_info = app.current_request.context['authorizer']['claims']
     check_superadmin_role(auth_info)
@@ -111,7 +111,7 @@ def client_update(client_id):
         raise ChaliceViewError('An error occurred while fetching the client')
 
 
-@app.route('/client', methods=['POST'], authorizer=authorizer)
+@app.route('/client', cors=True, methods=['POST'], authorizer=authorizer)
 def client_post():
     auth_info = app.current_request.context['authorizer']['claims']
     check_superadmin_role(auth_info)
@@ -161,7 +161,7 @@ def client_post():
     return {'status': "ok", 'message': "Client created successfully", "data": result}
 
 
-@app.route('/client/my', methods=['GET'], authorizer=authorizer)
+@app.route('/client/my', cors=True, methods=['GET'], authorizer=authorizer)
 def my_client():
     auth_info = app.current_request.context['authorizer']['claims']
 
