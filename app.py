@@ -177,6 +177,16 @@ def my_client():
         raise ChaliceViewError('An error occurred while fetching the client')
 
 
+@app.route('/clients/short', cors=True, methods=['GET'])
+def clients_short():
+    try:
+        query_result = execute_query(GetClientsQuery())
+        return [{'id': cli['id'], 'legal_name': cli['legal_name']} for cli in query_result.result]
+    except Exception as e:
+        LOGGER.error(f"Error fetching clients: {str(e)}")
+        raise ChaliceViewError('An error occurred while fetching the client')
+
+
 @app.route('/migrate', methods=['POST'])
 def migrate():
     try:
