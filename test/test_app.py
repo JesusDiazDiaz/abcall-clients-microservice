@@ -302,6 +302,164 @@ class TestClientService(unittest.TestCase):
                     response_data = json.loads(response.body)
                     assert response_data == mock_my_client
 
+    def test_create_client_missing_field(self):
+        mock_context = {
+            'authorizer': {
+                'claims': {
+                    'sub': 'user123',
+                    'email': 'user@example.com',
+                    'custom:custom:userRole': 'superadmin'
+                }
+            }
+        }
+
+        mock_request = MagicMock()
+        mock_request.context = mock_context
+        mock_request.headers = {
+            'Content-Type': 'application/json'
+        }
+        mock_request.json_body = {
+            "perfil": "Empresa",
+            "id_type": "NIT",
+            "legal_name": "Movistar",
+            "address": "calle falsa 123",
+            "type_document_rep": "cedula",
+            "id_rep_lega": "45678913",
+            "name_rep": "Pedro",
+            "last_name_rep": "Perez",
+            "email_rep": "pedroperez@gmail.com",
+            "plan_type": "empresario_plus"
+        }
+
+        with patch('chalice.app.Request', return_value=mock_request):
+            with Client(app) as client:
+                response = client.http.post(
+                    '/client',
+                    headers={'Content-Type': 'application/json'},
+                    body=json.dumps(mock_request.json_body)
+                )
+                assert response.status_code == 400
+                response_data = json.loads(response.body)
+                assert "Missing required field: id_number" in response_data['Message']
+
+    def test_unauthorized_user_role(self):
+        mock_context = {
+            'authorizer': {
+                'claims': {
+                    'sub': 'user123',
+                    'email': 'user@example.com',
+                    'custom:custom:userRole': 'admin'
+                }
+            }
+        }
+
+        mock_clients = []
+
+        mock_request = MagicMock()
+        mock_request.context = mock_context
+        mock_request.headers = {
+            'Content-Type': 'application/json', 'Authorization': 'Bearer asdajdahsda'
+        }
+
+        with patch('chalice.app.Request', return_value=mock_request):
+            with patch('chalicelib.src.modules.infrastructure.repository.ClientRepositoryPostgres.get_all',
+                       return_value=mock_clients):
+                with Client(app) as client:
+                    response = client.http.get('/clients')
+                    assert response.status_code == 401
+                    response_data = json.loads(response.body)
+                    assert response_data['Message'] == "Error checking user role: Access denied, only 'superadmin' role is allowed"
+
+    def test_unauthorized_create_client(self):
+        mock_context = {
+            'authorizer': {
+                'claims': {
+                    'sub': 'user123',
+                    'email': 'user@example.com',
+                    'custom:custom:userRole': 'admin'
+                }
+            }
+        }
+
+        mock_client_created = {
+            "status": "ok",
+            "message": "Client created successfully",
+            "data": {}
+        }
+
+        mock_request = MagicMock()
+        mock_request.context = mock_context
+        mock_request.headers = {
+            'Content-Type': 'application/json'
+        }
+        mock_request.json_body = {}
+
+        with patch('chalice.app.Request', return_value=mock_request):
+            with patch('chalicelib.src.modules.infrastructure.repository.ClientRepositoryPostgres.add',
+                       return_value=mock_client_created['data']):
+                with Client(app) as client:
+                    response = client.http.post(
+                        '/client',
+                        headers={'Content-Type': 'application/json'},
+                        body=json.dumps(mock_request.json_body)
+                    )
+                    assert response.status_code == 401
+                    response_data = json.loads(response.body)
+                    assert response_data['Message'] == "Error checking user role: Access denied, only 'superadmin' role is allowed"
+
+    def test_create_client_invalid_email_format(self):
+        mock_context = {
+            'authorizer': {
+                'claims': {
+                    'sub': 'user123',
+                    'email': 'user@example.com',
+                    'custom:custom:userRole': 'superadmin'
+                }
+            }
+        }
+
+        request_body = {
+            "perfil": "Empresa",
+            "id_type": "NIT",
+            "legal_name": "Movistar",
+            "id_number": "123456789",
+            "address": "calle falsa 123",
+            "type_document_rep": "cedula",
+            "id_rep_lega": "45678913",
+            "name_rep": "Pedro",
+            "last_name_rep": "Perez",
+            "email_rep": "invalid-email-format",
+            "plan_type": "empresario_plus"
+        }
+
+        mock_request = MagicMock()
+        mock_request.context = mock_context
+        mock_request.headers = {
+            'Content-Type': 'application/json'
+        }
+        mock_request.json_body = request_body
+
+        with patch('chalice.app.Request', return_value=mock_request):
+            with Client(app) as client:
+                response = client.http.post(
+                    '/client',
+                    headers={'Content-Type': 'application/json'},
+                    body=json.dumps(mock_request.json_body)
+                )
+                assert response.status_code == 400
+                response_data = json.loads(response.body)
+                assert response_data['Message'] == "Invalid email format"
+
+    def test_migrate_success(self):
+        with patch('chalicelib.src.config.db.init_db') as mock_init_db:
+            mock_init_db.return_value = None
+
+            with Client(app) as client:
+                response = client.http.post('/migrate')
+                assert response.status_code == 200
+                response_data = json.loads(response.body)
+                assert response_data['message'] == "Tablas creadas con éxito"
+
 
 if __name__ == '__main__':
     unittest.main()
