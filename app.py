@@ -42,10 +42,10 @@ def check_superadmin_role(user_info):
 
 @app.route('/clients', methods=['GET'], authorizer=authorizer)
 def index():
-    try:
-        auth_info = app.current_request.context['authorizer']['claims']
-        check_superadmin_role(auth_info)
+    auth_info = app.current_request.context['authorizer']['claims']
+    check_superadmin_role(auth_info)
 
+    try:
         query_result = execute_query(GetClientsQuery())
         return query_result.result
     except Exception as e:
